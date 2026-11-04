@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>デジタル回路ノイズマージン計算機</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <header class="mb-8">
+    <h1 class="text-2xl font-bold text-cyan-300">⚡ デジタル回路ノイズマージン計算機</h1>
+    <p class="text-slate-400 text-sm mt-1">Logic Family選択または電圧値手動入力でノイズマージンを計算</p>
+  </header>
+
+  <div class="bg-slate-800 rounded-xl p-6 mb-6">
+    <h2 class="font-semibold text-slate-200 mb-4">Logic Familyプリセット</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4" role="group" aria-label="Logic Familyを選択">
+      <button class="family-btn bg-slate-700 hover:bg-cyan-700 text-slate-200 py-2 px-3 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-cyan-400" data-family="cmos5" aria-pressed="false">CMOS 5V</button>
+      <button class="family-btn bg-slate-700 hover:bg-cyan-700 text-slate-200 py-2 px-3 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-cyan-400" data-family="cmos33" aria-pressed="false">CMOS 3.3V</button>
+      <button class="family-btn bg-slate-700 hover:bg-cyan-700 text-slate-200 py-2 px-3 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-cyan-400" data-family="ttl" aria-pressed="false">TTL 5V</button>
+      <button class="family-btn bg-slate-700 hover:bg-cyan-700 text-slate-200 py-2 px-3 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-cyan-400" data-family="74ls" aria-pressed="false">74LS</button>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1" for="voh">V<sub>OH</sub> (V)</label>
+        <input id="voh" type="number" step="0.01" class="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" placeholder="例: 4.9" aria-label="VOH: 出力HIGH最小電圧">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1" for="vol">V<sub>OL</sub> (V)</label>
+        <input id="vol" type="number" step="0.01" class="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" placeholder="例: 0.1" aria-label="VOL: 出力LOW最大電圧">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1" for="vih">V<sub>IH</sub> (V)</label>
+        <input id="vih" type="number" step="0.01" class="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" placeholder="例: 3.5" aria-label="VIH: 入力HIGH最小電圧">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1" for="vil">V<sub>IL</sub> (V)</label>
+        <input id="vil" type="number" step="0.01" class="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400" placeholder="例: 1.5" aria-label="VIL: 入力LOW最大電圧">
+      </div>
+    </div>
+
+    <div id="error-msg" class="text-red-400 text-sm mt-3 hidden" role="alert"></div>
+
+    <button id="calc-btn" class="mt-4 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-6 py-2.5 rounded-lg transition focus:outline-none focus:ring-2 focus:ring-cyan-300">
+      計算する
+    </button>
+  </div>
+
+  <div id="result" class="hidden">
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div class="bg-slate-800 rounded-xl p-5 border border-green-500/30">
+        <div class="text-xs text-slate-400 mb-1">NM<sub>H</sub> = V<sub>OH</sub> − V<sub>IH</sub></div>
+        <div class="text-3xl font-bold text-green-400" id="res-nmh">—</div>
+        <div class="text-xs text-green-300 mt-1">HIGHノイズマージン</div>
+        <div id="nmh-status" class="text-xs mt-2 font-semibold"></div>
+      </div>
+      <div class="bg-slate-800 rounded-xl p-5 border border-blue-500/30">
+        <div class="text-xs text-slate-400 mb-1">NM<sub>L</sub> = V<sub>IL</sub> − V<sub>OL</sub></div>
+        <div class="text-3xl font-bold text-blue-400" id="res-nml">—</div>
+        <div class="text-xs text-blue-300 mt-1">LOWノイズマージン</div>
+        <div id="nml-status" class="text-xs mt-2 font-semibold"></div>
+      </div>
+    </div>
+
+    <div class="bg-slate-800 rounded-xl p-5">
+      <h2 class="font-semibold text-slate-200 mb-4">電圧レベルダイアグラム</h2>
+      <svg id="voltage-diagram" width="100%" viewBox="0 0 500 300" aria-label="電圧レベルダイアグラム"></svg>
+      <div class="text-xs text-slate-500 mt-2 text-center">HIGH/LOW動作電圧範囲と禁止領域（灰色帯）</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const FAMILIES = {
+    cmos5:  { voh: 4.9, vol: 0.1, vih: 3.5, vil: 1.5 },
+    cmos33: { voh: 3.1, vol: 0.1, vih: 2.0, vil: 0.8 },
+    ttl:    { voh: 2.4, vol: 0.4, vih: 2.0, vil: 0.8 },
+    '74ls': { voh: 2.7, vol: 0.5, vih: 2.0, vil: 0.8 },
+  };
+
+  function setInputs(vals) {
+    document.getElementById('voh').value = vals.voh;
+    document.getElementById('vol').value = vals.vol;
+    document.getElementById('vih').value = vals.vih;
+    document.getElementById('vil').value = vals.vil;
+  }
+
+  document.querySelectorAll('.family-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.family-btn').forEach(b => {
+        b.classList.remove('bg-cyan-700');
+        b.classList.add('bg-slate-700');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      btn.classList.remove('bg-slate-700');
+      btn.classList.add('bg-cyan-700');
+      btn.setAttribute('aria-pressed', 'true');
+      setInputs(FAMILIES[btn.dataset.family]);
+      calculate();
+    });
+  });
+
+  function statusLabel(nm) {
+    if (nm < 0) return { text: '危険: 動作保証なし', cls: 'text-red-400' };
+    if (nm < 0.3) return { text: '注意: マージン不足', cls: 'text-yellow-400' };
+    if (nm < 0.5) return { text: 'ギリギリ（要検討）', cls: 'text-yellow-300' };
+    return { text: '良好', cls: 'text-green-400' };
+  }
+
+  function drawDiagram(voh, vol, vih, vil) {
+    const svg = document.getElementById('voltage-diagram');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    const W = 500, H = 300;
+    const PAD_L = 60, PAD_R = 160, PAD_T = 20, PAD_B = 20;
+    const drawH = H - PAD_T - PAD_B;
+    const drawW = W - PAD_L - PAD_R;
+
+    const vcc = Math.max(voh, vih, vil, vol) * 1.1 + 0.5;
+    const vmin = -0.1;
+    const vspan = vcc - vmin;
+
+    function yOf(v) {
+      return PAD_T + drawH * (1 - (v - vmin) / vspan);
+    }
+
+    function ns(tag, attrs) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+      return el;
+    }
+
+    function rect(x, y, w, h, fill, opacity) {
+      svg.appendChild(ns('rect', { x, y, width: w, height: h, fill, 'fill-opacity': opacity || 1 }));
+    }
+
+    function line(x1, y1, x2, y2, stroke, sw, dash) {
+      const el = ns('line', { x1, y1, x2, y2, stroke, 'stroke-width': sw || 1 });
+      if (dash) el.setAttribute('stroke-dasharray', dash);
+      svg.appendChild(el);
+    }
+
+    function text(x, y, t, fill, anchor, fs) {
+      const el = ns('text', { x, y, fill, 'text-anchor': anchor || 'middle', 'font-size': fs || 11, 'dominant-baseline': 'middle' });
+      el.textContent = t;
+      svg.appendChild(el);
+    }
+
+    rect(PAD_L, PAD_T, drawW, drawH, '#1e293b');
+
+    const yVoh = yOf(voh);
+    const yVol = yOf(vol);
+    const yVih = yOf(vih);
+    const yVil = yOf(vil);
+
+    rect(PAD_L, yVoh, drawW, yVih - yVoh, '#22c55e', 0.15);
+    rect(PAD_L, yVil, drawW, yVol - yVil, '#3b82f6', 0.15);
+    rect(PAD_L, yVih, drawW, yVil - yVih, '#6b7280', 0.3);
+
+    line(PAD_L, yVoh, PAD_L + drawW, yVoh, '#4ade80', 1.5);
+    line(PAD_L, yVil, PAD_L + drawW, yVil, '#60a5fa', 1.5);
+    line(PAD_L, yVih, PAD_L + drawW, yVih, '#86efac', 1, '4,4');
+    line(PAD_L, yVol, PAD_L + drawW, yVol, '#93c5fd', 1, '4,4');
+
+    const lx = PAD_L + drawW + 8;
+    text(lx, yVoh, 'VOH=' + voh + 'V', '#4ade80', 'start', 11);
+    text(lx, yVih, 'VIH=' + vih + 'V', '#86efac', 'start', 11);
+    text(lx, yVil, 'VIL=' + vil + 'V', '#93c5fd', 'start', 11);
+    text(lx, yVol, 'VOL=' + vol + 'V', '#60a5fa', 'start', 11);
+
+    const ymidNmh = (yVoh + yVih) / 2;
+    const ymidNml = (yVil + yVol) / 2;
+    const nmh = (voh - vih).toFixed(2);
+    const nml = (vil - vol).toFixed(2);
+    text(PAD_L + drawW / 2, ymidNmh, 'NMH=' + nmh + 'V', '#86efac', 'middle', 12);
+    text(PAD_L + drawW / 2, ymidNml, 'NML=' + nml + 'V', '#93c5fd', 'middle', 12);
+
+    text(PAD_L + drawW / 2, (yVih + yVil) / 2, '不定領域（Undefined）', '#9ca3af', 'middle', 10);
+
+    const ticks = 6;
+    for (let i = 0; i <= ticks; i++) {
+      const v = vmin + (vspan / ticks) * i;
+      const y = yOf(v);
+      line(PAD_L - 4, y, PAD_L, y, '#475569', 1);
+      text(PAD_L - 8, y, v.toFixed(1) + 'V', '#94a3b8', 'end', 10);
+    }
+
+    text(PAD_L + drawW / 2, H - 8, '← 出力側        入力側 →', '#64748b', 'middle', 10);
+  }
+
+  function calculate() {
+    const voh = parseFloat(document.getElementById('voh').value);
+    const vol = parseFloat(document.getElementById('vol').value);
+    const vih = parseFloat(document.getElementById('vih').value);
+    const vil = parseFloat(document.getElementById('vil').value);
+    const errEl = document.getElementById('error-msg');
+
+    if ([voh, vol, vih, vil].some(isNaN)) {
+      errEl.textContent = '全ての値を入力してください';
+      errEl.classList.remove('hidden');
+      document.getElementById('result').classList.add('hidden');
+      return;
+    }
+    errEl.classList.add('hidden');
+
+    const nmh = voh - vih;
+    const nml = vil - vol;
+
+    document.getElementById('res-nmh').textContent = nmh.toFixed(3) + ' V';
+    document.getElementById('res-nml').textContent = nml.toFixed(3) + ' V';
+
+    const sh = statusLabel(nmh);
+    const sl = statusLabel(nml);
+    const nmhStatus = document.getElementById('nmh-status');
+    nmhStatus.textContent = sh.text;
+    nmhStatus.className = 'text-xs mt-2 font-semibold ' + sh.cls;
+    const nmlStatus = document.getElementById('nml-status');
+    nmlStatus.textContent = sl.text;
+    nmlStatus.className = 'text-xs mt-2 font-semibold ' + sl.cls;
+
+    drawDiagram(voh, vol, vih, vil);
+    document.getElementById('result').classList.remove('hidden');
+  }
+
+  document.getElementById('calc-btn').addEventListener('click', calculate);
+
+  const firstBtn = document.querySelector('.family-btn[data-family="cmos5"]');
+  firstBtn.classList.remove('bg-slate-700');
+  firstBtn.classList.add('bg-cyan-700');
+  firstBtn.setAttribute('aria-pressed', 'true');
+  setInputs(FAMILIES['cmos5']);
+  calculate();
+})();
+</script>
+</body>
+</html>
